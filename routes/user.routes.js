@@ -6,6 +6,7 @@ import { authorize } from "../middlewares/auth.middleware.js";
 
 const userRouter = Router();
 
+// Path: /api/v1/users 
 userRouter.get("/", getUsers);
 
 userRouter.get("/:id", authorize, getUser);
