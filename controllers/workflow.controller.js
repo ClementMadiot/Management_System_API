@@ -3,9 +3,8 @@ import dayjs from 'dayjs';
 // import serve from the express module
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { serve } = require('@upstash/workflow/express');
+const { serve } = require("@upstash/workflow/express");
 
-// import the Subscription model
 import Subscription from '../models/subscription.model.js';
 import { sendRemindersEmail } from '../utils/send-email.js';
 
@@ -17,7 +16,11 @@ export const sendReminders = serve(async (context) => {
   const subscription = await fetchSubscription(context, subscriptionId)
 
   // Check if the subscription exists and if isn't active
-  if (!subscription || subscription.status !== 'active') return
+  if (!subscription || subscription.status !== 'active') {
+    console.log(`Subscription ${subscriptionId} doesn't exist or isn't active. Stopping workflow.`)
+    return;
+    
+  }
 
   // Check when is the renewal date
   const renewalDate = dayjs(subscription.renewalDate)
@@ -33,12 +36,15 @@ export const sendReminders = serve(async (context) => {
     if(reminderDate.isAfter(dayjs())) {
       await sleepUntilReminder(context,`Reminder ${daysBefore} days before`, reminderDate)
     }
-    await triggerReminder(context, `${daysBefore} days before reminder`, subscription)
+
+    if (dayjs().isSame(reminderDate, 'day')) {
+      await triggerReminder(context, `${daysBefore} days before reminder`, subscription);
+    }
   }
 })
 
 const fetchSubscription = async (context, subscriptionId) => {
-  return await context.run('get subscription', async () => {
+  return await context.run('get subscription',  async () => {
     return Subscription.findById(subscriptionId).populate('user', 'name email')
   })
 }
@@ -55,7 +61,7 @@ const triggerReminder = async (context, label, subscription) => {
     await sendRemindersEmail({
       to: subscription.user.email,
       type: label,
-      subscription
+      subscription,
     })
   })
 }
